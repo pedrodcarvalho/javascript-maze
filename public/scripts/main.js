@@ -56,16 +56,18 @@ class Maze {
     addBorders() { };
     addDefaultWalls() { };
     removeWalls() { };
-    printMaze() { };
-    updateMaze() { };
     getNeighbors() { };
     getWallToRemove() { };
+    printMaze() { };
+    updateMaze() { };
     solveMaze() { };
+    checkWalls() { };
 }
 
 Maze.prototype.initializeMaze = function () {
     for (let i = 0; i < this.mazeRows; i++) {
         this.maze[i] = [];
+
         for (let j = 0; j < this.mazeCols; j++) {
             this.maze[i][j] = 0;
         }
@@ -77,6 +79,7 @@ Maze.prototype.addBorders = function () {
         this.maze[i][0] = 1;
         this.maze[i][this.mazeCols - 1] = 1;
     }
+
     for (let j = 0; j < this.mazeCols; j++) {
         this.maze[0][j] = 1;
         this.maze[this.mazeRows - 1][j] = 1;
@@ -91,6 +94,48 @@ Maze.prototype.addDefaultWalls = function () {
             }
         }
     }
+}
+
+Maze.prototype.removeWalls = function () {
+    let stack = new Stack();
+
+    stack.push([1, 1]);
+    this.maze[1][1] = 2;
+
+    let visitedCells = 1;
+    let totalCells = (this.mazeRows - 1) * (this.mazeCols - 1) / 4;
+
+    while (visitedCells < totalCells) {
+        let currentCell = stack.top();
+        let neighbors = this.getNeighbors(currentCell);
+
+        if (neighbors.length > 0) {
+            let randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+
+            let wallToRemove = this.getWallToRemove(currentCell, randomNeighbor);
+
+            this.maze[wallToRemove[0]][wallToRemove[1]] = 2;
+            this.maze[randomNeighbor[0]][randomNeighbor[1]] = 2;
+            stack.push(randomNeighbor);
+
+            visitedCells++;
+        }
+        else {
+            stack.pop();
+        }
+    }
+
+    for (let i = 0; i < this.mazeRows; i++) {
+        for (let j = 0; j < this.mazeCols; j++) {
+            if (this.maze[i][j] === 2) {
+                this.maze[i][j] = 0;
+            }
+        }
+    }
+
+    this.currentMaze = this.maze.map(function (arr) {
+        return [...arr];
+    });
 }
 
 Maze.prototype.getNeighbors = function (currentCell) {
@@ -133,46 +178,6 @@ Maze.prototype.getWallToRemove = function (currentCell, randomNeighbor) {
     }
 
     return wallToRemove;
-}
-
-Maze.prototype.removeWalls = function () {
-    let stack = new Stack();
-    let startCell = [1, 1];
-    stack.push(startCell);
-    this.maze[startCell[0]][startCell[1]] = 2;
-    let endCell = [this.mazeRows - 2, this.mazeCols - 2];
-    let visitedCells = 1;
-    let totalCells = (this.mazeRows - 1) * (this.mazeCols - 1) / 4;
-
-    while (visitedCells < totalCells) {
-        let currentCell = stack.top();
-        let neighbors = this.getNeighbors(currentCell);
-
-        if (neighbors.length > 0) {
-            let randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
-            let wallToRemove = this.getWallToRemove(currentCell, randomNeighbor);
-            this.maze[wallToRemove[0]][wallToRemove[1]] = 2;
-            this.maze[randomNeighbor[0]][randomNeighbor[1]] = 2;
-            stack.push(randomNeighbor);
-            visitedCells++;
-        }
-        else {
-            stack.pop();
-        }
-    }
-
-    for (let i = 0; i < this.mazeRows; i++) {
-        for (let j = 0; j < this.mazeCols; j++) {
-            if (this.maze[i][j] === 2) {
-                this.maze[i][j] = 0;
-            }
-        }
-    }
-    this.currentMaze = this.maze.map(function (arr) {
-        return [...arr];
-    });
-
-    console.log(this.currentMaze, 'Current Maze');
 }
 
 Maze.prototype.printMaze = function () {
@@ -231,6 +236,41 @@ Maze.prototype.updateMaze = function () {
     });
 }
 
+Maze.prototype.solveMaze = function () {
+    let stack = new Stack();
+
+    stack.push([1, 1]);
+    this.maze[1][1] = 2;
+
+    let endCell = [this.mazeRows - 2, this.mazeCols - 2];
+
+    const update = setInterval(() => {
+        let currentCell = stack.top();
+        let neighbors = this.getNeighbors(currentCell);
+
+        neighbors = this.checkWalls(currentCell, neighbors);
+
+        if (neighbors.length > 0) {
+            let randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+
+            this.maze[currentCell[0] === randomNeighbor[0] ? currentCell[0] : (currentCell[0] + randomNeighbor[0]) / 2][currentCell[1] === randomNeighbor[1] ? currentCell[1] : (currentCell[1] + randomNeighbor[1]) / 2] = 2;
+            this.maze[randomNeighbor[0]][randomNeighbor[1]] = 2;
+            stack.push(randomNeighbor);
+        }
+        else {
+            this.maze[currentCell[0]][currentCell[1]] = 3;
+            stack.pop();
+            this.maze[currentCell[0] === stack.top()[0] ? currentCell[0] : (currentCell[0] + stack.top()[0]) / 2][currentCell[1] === stack.top()[1] ? currentCell[1] : (currentCell[1] + stack.top()[1]) / 2] = 3;
+        }
+
+        if (stack.top().toString() === endCell.toString()) {
+            clearInterval(update);
+        }
+
+        this.updateMaze();
+    }, 1);
+}
+
 Maze.prototype.checkWalls = function (currentCell, neighbors) {
     let row = currentCell[0];
     let col = currentCell[1];
@@ -252,39 +292,6 @@ Maze.prototype.checkWalls = function (currentCell, neighbors) {
     }
 
     return newNeighbors;
-}
-
-Maze.prototype.solveMaze = function () {
-    console.log(this.maze);
-    let stack = new Stack();
-    let startCell = [1, 1];
-    stack.push(startCell);
-    this.maze[startCell[0]][startCell[1]] = 2;
-    let endCell = [this.mazeRows - 2, this.mazeCols - 2];
-
-    const interval = setInterval(() => {
-        let currentCell = stack.top();
-        let neighbors = this.getNeighbors(currentCell);
-        neighbors = this.checkWalls(currentCell, neighbors);
-
-        if (neighbors.length > 0) {
-            let randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
-            this.maze[currentCell[0] === randomNeighbor[0] ? currentCell[0] : (currentCell[0] + randomNeighbor[0]) / 2][currentCell[1] === randomNeighbor[1] ? currentCell[1] : (currentCell[1] + randomNeighbor[1]) / 2] = 2;
-            this.maze[randomNeighbor[0]][randomNeighbor[1]] = 2;
-            stack.push(randomNeighbor);
-        }
-        else {
-            this.maze[currentCell[0]][currentCell[1]] = 3;
-            stack.pop();
-            this.maze[currentCell[0] === stack.top()[0] ? currentCell[0] : (currentCell[0] + stack.top()[0]) / 2][currentCell[1] === stack.top()[1] ? currentCell[1] : (currentCell[1] + stack.top()[1]) / 2] = 3;
-        }
-
-        if (stack.top().toString() === endCell.toString()) {
-            clearInterval(interval);
-        }
-
-        this.updateMaze();
-    }, 1);
 }
 
 const driver = new Maze(mazeRows, mazeCols);
