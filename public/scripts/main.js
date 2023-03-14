@@ -1,20 +1,28 @@
 const root = document.getElementById('root');
-const wall = document.createElement('img');
-wall.src = '/public/images/wall.png';
-wall.width = 25;
-wall.height = 25;
-const path = document.createElement('img');
-path.src = '/public/images/path.png';
-path.width = 25;
-path.height = 25;
-const bluePath = document.createElement('img');
-bluePath.src = '/public/images/blue-path.png';
-bluePath.width = 25;
-bluePath.height = 25;
-const redPath = document.createElement('img');
-redPath.src = '/public/images/red-path.png';
-redPath.width = 25;
-redPath.height = 25;
+
+const WIDTH = 25;
+const HEIGHT = 25;
+
+const wall = createCell(WIDTH, HEIGHT, '#e7e7e7');
+const path = createCell(WIDTH, HEIGHT, '#181818');
+const bluePath = createCell(WIDTH, HEIGHT, '#2596be');
+const redPath = createCell(WIDTH, HEIGHT, '#be4d25');
+
+function createCell(WIDTH, HEIGHT, bgColor) {
+    const cell = document.createElement('div');
+
+    cell.style.width = `${WIDTH}px`;
+    cell.style.height = `${HEIGHT}px`;
+    cell.style.backgroundColor = bgColor;
+
+    return cell;
+}
+
+let mazeRows = Number(prompt('Enter the number of rows in the maze: '));
+mazeRows = mazeRows % 2 === 1 ? mazeRows + 2 : mazeRows + 3;
+
+let mazeCols = Number(prompt('Enter the number of columns in the maze: '));
+mazeCols = mazeCols % 2 === 1 ? mazeCols + 2 : mazeCols + 3;
 
 class Stack {
     constructor() {
@@ -31,20 +39,8 @@ class Stack {
         }
     }
 
-    tail() {
+    top() {
         return this.items[this.items.length - 1];
-    }
-
-    isEmpty() {
-        return this.items.length == 0;
-    }
-
-    size() {
-        return this.items.length;
-    }
-
-    clear() {
-        this.items = [];
     }
 }
 
@@ -53,6 +49,7 @@ class Maze {
         this.maze = [];
         this.mazeRows = mazeRows;
         this.mazeCols = mazeCols;
+        this.currentMaze = [];
     }
 
     initializeMaze() { };
@@ -60,18 +57,10 @@ class Maze {
     addDefaultWalls() { };
     removeWalls() { };
     printMaze() { };
+    updateMaze() { };
     getNeighbors() { };
     getWallToRemove() { };
     solveMaze() { };
-}
-
-let mazeRows = prompt('Enter the number of rows in the maze: ');
-if (mazeRows % 2 === 0) {
-    mazeRows++;
-}
-let mazeCols = prompt('Enter the number of columns in the maze: ');
-if (mazeCols % 2 === 0) {
-    mazeCols++;
 }
 
 Maze.prototype.initializeMaze = function () {
@@ -156,7 +145,7 @@ Maze.prototype.removeWalls = function () {
     let totalCells = (this.mazeRows - 1) * (this.mazeCols - 1) / 4;
 
     while (visitedCells < totalCells) {
-        let currentCell = stack.tail();
+        let currentCell = stack.top();
         let neighbors = this.getNeighbors(currentCell);
 
         if (neighbors.length > 0) {
@@ -179,6 +168,11 @@ Maze.prototype.removeWalls = function () {
             }
         }
     }
+    this.currentMaze = this.maze.map(function (arr) {
+        return [...arr];
+    });
+
+    console.log(this.currentMaze, 'Current Maze');
 }
 
 Maze.prototype.printMaze = function () {
@@ -200,6 +194,41 @@ Maze.prototype.printMaze = function () {
             }
         }
     }
+}
+
+Maze.prototype.updateMaze = function () {
+    let diff = [];
+
+    for (let i = 0; i < this.mazeRows; i++) {
+        for (let j = 0; j < this.mazeCols; j++) {
+            if (this.maze[i][j] !== this.currentMaze[i][j]) {
+                diff.push([{ x: i, y: j, value: this.maze[i][j] }]);
+            }
+        }
+    }
+
+    for (let i = 0; i < diff.length; i++) {
+        let x = diff[i][0].x;
+        let y = diff[i][0].y;
+        let value = diff[i][0].value;
+
+        if (value === 0) {
+            root.childNodes[x].childNodes[y].replaceWith(path.cloneNode());
+        }
+        else if (value === 1) {
+            root.childNodes[x].childNodes[y].replaceWith(wall.cloneNode());
+        }
+        else if (value === 2) {
+            root.childNodes[x].childNodes[y].replaceWith(bluePath.cloneNode());
+        }
+        else if (value === 3) {
+            root.childNodes[x].childNodes[y].replaceWith(redPath.cloneNode());
+        }
+    }
+
+    this.currentMaze = this.maze.map(function (arr) {
+        return [...arr];
+    });
 }
 
 Maze.prototype.checkWalls = function (currentCell, neighbors) {
@@ -226,6 +255,7 @@ Maze.prototype.checkWalls = function (currentCell, neighbors) {
 }
 
 Maze.prototype.solveMaze = function () {
+    console.log(this.maze);
     let stack = new Stack();
     let startCell = [1, 1];
     stack.push(startCell);
@@ -233,32 +263,35 @@ Maze.prototype.solveMaze = function () {
     let endCell = [this.mazeRows - 2, this.mazeCols - 2];
 
     const interval = setInterval(() => {
-        root.innerHTML = '';
-        this.printMaze();
-        let currentCell = stack.tail();
+        let currentCell = stack.top();
         let neighbors = this.getNeighbors(currentCell);
         neighbors = this.checkWalls(currentCell, neighbors);
-        console.log(neighbors)
+
         if (neighbors.length > 0) {
             let randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+            this.maze[currentCell[0] === randomNeighbor[0] ? currentCell[0] : (currentCell[0] + randomNeighbor[0]) / 2][currentCell[1] === randomNeighbor[1] ? currentCell[1] : (currentCell[1] + randomNeighbor[1]) / 2] = 2;
             this.maze[randomNeighbor[0]][randomNeighbor[1]] = 2;
             stack.push(randomNeighbor);
         }
         else {
             this.maze[currentCell[0]][currentCell[1]] = 3;
             stack.pop();
+            this.maze[currentCell[0] === stack.top()[0] ? currentCell[0] : (currentCell[0] + stack.top()[0]) / 2][currentCell[1] === stack.top()[1] ? currentCell[1] : (currentCell[1] + stack.top()[1]) / 2] = 3;
         }
 
-        if (stack.tail().toString() === endCell.toString()) {
+        if (stack.top().toString() === endCell.toString()) {
             clearInterval(interval);
         }
+
+        this.updateMaze();
     }, 1);
 }
 
 const driver = new Maze(mazeRows, mazeCols);
+
 driver.initializeMaze();
 driver.addBorders();
 driver.addDefaultWalls();
 driver.removeWalls();
-driver.solveMaze();
 driver.printMaze();
+driver.solveMaze();

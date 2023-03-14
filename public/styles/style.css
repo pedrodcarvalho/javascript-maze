@@ -19,11 +19,6 @@ body {
 
 .flex {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-}
-
-.flex div {
-  height: 25px;
 }
